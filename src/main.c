@@ -21,6 +21,8 @@ int main(int argc, char **argv) {
                     goto leave;
                 break;
         }
+
+        SDL_GL_SwapBuffers();
     }
 
     leave:
