@@ -4,14 +4,19 @@
 #include <string.h>
 #include "oglconsole.h"
 
-#define NUMTHINGS 1
+#define FPS 60
+#define MAX_15 32768 // 2^15
+#define NUMTHINGS 16
 #define NUMGAMES 16
+#define WIDTH 640
+#define HEIGHT 480
 
-/* The Player Input Buffer (PIB) holds the history of the player's input! */
-int current_pib = 0;
+/* The injection history buffer represents all data which affects game state but
+ * which cannot be inferred from earlier game states. For now, this means only
+ * player input. */
 struct {
-    Sint16 x1, y1, x2, y2;
-} PIB[NUMGAMES];
+    Sint16 x1, y1;
+} injection_history[NUMGAMES];
 
 /* Represents any object of consequence in the game */
 struct Thing {
@@ -24,6 +29,11 @@ struct Thing {
 };
 #define PLAYER 1
 #define ASTEROID 2
+#define CANDY 3
+#define HOMER 4
+
+#define HOMERF 0.3
+#define CANDYF 0.1
 
 /* Represents all objects of consequence at a current point in time */
 struct GameState {
@@ -37,20 +47,44 @@ struct GameState gamestate[NUMGAMES];
 int currentgamestate = 0;
 
 void new_game() {
-    struct GameState *gs = &gamestate[0];
+    struct GameState *gs;
+    struct Thing *things;
+    int i;
+
+    gs = &gamestate[0];
     currentgamestate = 0;
     memset(&gamestate, 0, sizeof(gamestate));
-    gs->things[0].type = PLAYER;
-    gs->things[0].life = 10;
-    gs->things[0].x =
-    gs->things[0].y =
-    gs->things[0].vx =
-    gs->things[0].vy = 0.0;
-    gs->numthings = 1;
+
+    things = gs->things;
+
+    things[0].type = PLAYER;
+    things[0].life = 10;
+    things[0].zen = 0;
+    things[0].x = 100.0;
+    things[0].y = 200.0;
+    things[0].vx =
+    things[0].vy = 0.0;
+
+    for (i=1; i<NUMTHINGS; i++) {
+        things[i].type = ASTEROID;
+        things[i].life = 10;
+        things[i].zen = 0;
+        things[i].x = (float)(Uint16)random() / (float)MAX_15 * WIDTH;
+        things[i].y = (float)(Uint16)random() / (float)MAX_15 * HEIGHT;
+        things[i].vx = (float)(Uint16)random() / (float)MAX_15;
+        things[i].vy = (float)(Uint16)random() / (float)MAX_15;
+    }
+
+    things[1].type = HOMER;
+    things[2].type = HOMER;
+    things[3].type = CANDY;
+    things[4].type = CANDY;
+    gs->numthings = NUMTHINGS;
 }
 void game_state_step(struct GameState *past, struct GameState *future) {
     struct Thing *pthings, *fthings;
     int i, j, numthings;
+    float px, py;
 
     /* Advance timer */
     future->time = past->time + 1;
@@ -59,22 +93,62 @@ void game_state_step(struct GameState *past, struct GameState *future) {
     pthings = past->things;
     fthings = future->things;
 
+    px = pthings[0].x;
+    py = pthings[0].y;
+
     /* For each thing.. */
-    j = 0;
     numthings = past->numthings;
     for (i=0; i<numthings; i++) {
         struct Thing thing = pthings[i];
         /* Advance thing's position */
         thing.x += thing.vx;
+        if (thing.x < 0) thing.x += WIDTH;
+        else if (thing.x >= WIDTH) thing.x -= WIDTH;
         thing.y += thing.vy;
+        if (thing.y < 0) thing.y += HEIGHT;
+        else if (thing.y >= HEIGHT) thing.y -= HEIGHT;
         /* What does a thing do? */
         switch (thing.type) {
-            case PLAYER:
+            case HOMER:
+                if (thing.y == py) ;//thing.vx = thing.x>px?HOMERF:-HOMERF;
+                else if (thing.x == px);// thing.vy = thing.y>py?HOMERF:-HOMERF;
+                else {
+                    thing.vy = fabs((thing.y-py)/(thing.x-px))
+                             * (thing.y<py?HOMERF:-HOMERF);
+                    thing.vx = fabs((thing.x-px)/(thing.y-py))
+                             * (thing.x<px?HOMERF:-HOMERF);
+                }
+                break;
+            case CANDY:
+                if (thing.y == py) ;//thing.vx = thing.x>px?CANDYF:-CANDYF;
+                else if (thing.x == px);// thing.vy = thing.y>py?CANDYF:-CANDYF;
+                else {
+                    thing.vy = fabs((thing.y-py)/(thing.x-px))
+                             * (thing.y>py?CANDYF:-CANDYF);
+                    thing.vx = fabs((thing.x-px)/(thing.y-py))
+                             * (thing.x>px?CANDYF:-CANDYF);
+                }
                 break;
         }
-        /* Does the thing survive into the future? */
-        if (thing.life > 0) {
-            fthings[j++] = thing;
+        fthings[i] = thing;
+    }
+
+    /* Collision checking -- assumes thing 1 is the player, and
+     * that only the player can collide with anything */
+    px = fthings[0].x;
+    py = fthings[0].y;
+    for (i=1; i<numthings; i++) {
+        if ((fabs(fthings[i].x - px) < 10.0f)
+        &&  (fabs(fthings[i].y - py) < 10.0f)) {
+            fthings[i].life = 0;
+        }
+    }
+
+    /* Prune zombies ;) */
+    j=0;
+    for (i=0; i<numthings; i++) {
+        if (fthings[i].life > 0) {
+            fthings[j++] = fthings[i];
         }
     }
 
@@ -83,22 +157,26 @@ void game_state_step(struct GameState *past, struct GameState *future) {
 }
 void game_step() {
     struct GameState *past, *future;
+    int i;
     past = &gamestate[currentgamestate];
     if (++currentgamestate >= NUMGAMES)
         currentgamestate = 0;
     future = &gamestate[currentgamestate];
+    for (i=0; i<1024; i++)
     game_state_step(past, future);
 }
 
 int main(int argc, char **argv) {
     SDL_Joystick *joy = NULL;
     int i, n;
+    Uint32 next_tick = 0;
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK)) {
         return -2;
     }
 
-    if (!SDL_SetVideoMode(640, 480, 32, SDL_DOUBLEBUF|SDL_OPENGL)) {
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    if (!SDL_SetVideoMode(640, 480, 32, SDL_OPENGL)) {
         return -1;
     }
 
@@ -135,8 +213,11 @@ int main(int argc, char **argv) {
     /* Main loop! */
     while (1) {
         float x, y;
-        int i;
+        int i, numthings;
+        struct Thing *things;
         SDL_Event event;
+        Uint32 current_tick;
+
         if (SDL_PollEvent(&event))
         if (!OGLCONSOLE_SDLEvent(&event))
         switch (event.type) {
@@ -151,11 +232,11 @@ int main(int argc, char **argv) {
         /* Game logic! */
         /* Get joystick input */
         SDL_JoystickUpdate();
-        x = 0.15 * (float) (SDL_JoystickGetAxis(joy, 0) / 0x1000);
-        y = 0.15 * (float) (SDL_JoystickGetAxis(joy, 1) / 0x1000);
-        /* Save player input history into player input buffer */
-        PIB[currentgamestate].x1 = x;
-        PIB[currentgamestate].y1 = y;
+        x = 0.0003 * (float) SDL_JoystickGetAxis(joy, 0);
+        y = 0.0003 * (float) SDL_JoystickGetAxis(joy, 1);
+        /* Save player input history into injection history buffer */
+        injection_history[currentgamestate].x1 = x;
+        injection_history[currentgamestate].y1 = y;
         /* Update player control state TODO move this someplace else */
         gamestate[currentgamestate].things[0].vx = x;
         gamestate[currentgamestate].things[0].vy = y;
@@ -166,7 +247,8 @@ int main(int argc, char **argv) {
 
         glMatrixMode(GL_PROJECTION);
         glPushMatrix();
-        glOrtho(0, 640, 480, 0, 1, -1);
+        glOrtho(0, WIDTH, HEIGHT, 0, 1, -1);
+        //glTranslated(320, 240, 0);
 
         glMatrixMode(GL_MODELVIEW);
         glPushMatrix();
@@ -174,27 +256,52 @@ int main(int argc, char **argv) {
 
         glDisable(GL_DEPTH_TEST);
         glDisable(GL_TEXTURE_2D);
-        glBegin(GL_QUADS);
-        for (i=0; i<10; i++) {
-            int c = random();
-            glColor3ub(c&255, c>>8&255, c>>16&255);
-            glVertex2d(10*i -10, 10*i +10);
-            glVertex2d(10*i -10, 10*i -10);
-            glVertex2d(10*i +10, 10*i -10);
-            glVertex2d(10*i +10, 10*i +10);
+
+        numthings = gamestate[currentgamestate].numthings;
+        things = gamestate[currentgamestate].things;
+        glColor3ub(255,0,255);
+        for (i=1; i<numthings; i++) {
+            int x, y;
+            const int c = 12, d = 9;
+            x = things[i].x;
+            y = things[i].y;
+            switch (things[i].type) {
+                case CANDY:
+                    glColor3ub(255, 255, 90);
+                    break;
+                case HOMER:
+                    glColor3ub(255, 0, 0);
+                    break;
+                case ASTEROID:
+                    glColor3ub(100, 120, 140);
+                    break;
+            }
+            glBegin(GL_TRIANGLE_FAN);
+            glVertex2d(x, y);
+            glVertex2d(x  , y+c);
+            glVertex2d(x+d, y+d);
+            glVertex2d(x+c, y  );
+            glVertex2d(x+d, y-d);
+            glVertex2d(x  , y-c);
+            glVertex2d(x-d, y-d);
+            glVertex2d(x-c, y  );
+            glVertex2d(x-d, y+d);
+            glVertex2d(x  , y+c);
+            glEnd();
         }
 
         /* Draw the player */
+        glBegin(GL_QUADS);
         glColor3ub(0, 255, 0);
         /* Player's "head" leads their position */
-        x = x*3 + gamestate[currentgamestate].things[0].x;
-        y = y*3 + gamestate[currentgamestate].things[0].y;
+        x = x + gamestate[currentgamestate].things[0].x;
+        y = y + gamestate[currentgamestate].things[0].y;
         glVertex2d(x +5, y +5);
         glVertex2d(x -5, y +5);
         glVertex2d(x -5, y -5);
         glVertex2d(x +5, y -5);
 
-        /* Player's "body" shows their position */
+        /* Player's "body" shows their real position */
         x = gamestate[currentgamestate].things[0].x;
         y = gamestate[currentgamestate].things[0].y;
         glVertex2d(x +5, y +5);
@@ -211,6 +318,33 @@ int main(int argc, char **argv) {
 
         OGLCONSOLE_Draw();
         SDL_GL_SwapBuffers();
+
+        /* Wait! */
+        current_tick = SDL_GetTicks();
+        /* Did we hitch? */
+        if (current_tick >= next_tick) {
+            static Uint32 last_hitch_warning = 0;
+            static int hitch_total = 0;
+
+            /* First time through? Not a hitch! */
+            if (next_tick != 0) {
+                hitch_total++;
+                if (current_tick >= last_hitch_warning + 10000) {
+                    OGLCONSOLE_Print("WARNING: hitch! (total %d)\n",
+                            hitch_total);
+                    last_hitch_warning = current_tick;
+                }
+            }
+
+            /* Recalculate our next tick */
+            next_tick = current_tick + 1000/FPS;
+
+        } else {
+            /* Wait a little while! */
+            if (next_tick - current_tick > 10)
+                SDL_Delay(next_tick - current_tick);
+            next_tick += 1000/FPS;
+        }
     }
 
     leave:

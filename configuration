@@ -1,4 +1,4 @@
-CFLAGS:=$(CFLAGS) -I/usr/local/include/SDL -D_GNU_SOURCE=1 -D_REENTRANT -Wall -I. -DDATAFOLDER=\"data/\" -I../oglconsole -DOGLCONSOLE_USE_SDL=1 -ggdb3 -gstabs+
+CFLAGS:=$(CFLAGS) -I/usr/local/include/SDL -D_GNU_SOURCE=1 -D_REENTRANT -Wall -I. -DDATAFOLDER=\"data/\" -I../oglconsole -DOGLCONSOLE_USE_SDL=1 -O2 -ggdb3 -gstabs+
 
 LDFLAGS:=$(LDFLAGS) -L/usr/lib -lGL -lGLU /usr/local/lib/libSDL.so -lpthread -lSDL_mixer -lSDL_image ../oglconsole/oglconsole-sdl.o
 
