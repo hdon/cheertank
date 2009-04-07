@@ -34,8 +34,9 @@ struct Thing {
 #define HOMER 4
 
 #define ASTEROIDF 0.013
-#define HOMERF 2.30
-#define CANDYF 2.30
+#define HOMERF 3.30
+#define CANDYF 3.90
+#define CANDYRANGE 150
 
 /* Represents all objects of consequence at a current point in time */
 struct GameState {
@@ -47,6 +48,17 @@ struct GameState {
 /* We need a whole heap of game states! */
 struct GameState gamestate[NUMGAMES];
 int currentgamestate = 0;
+
+void init_thing(struct Thing * thing) {
+    thing->life = 10;
+    thing->zen = 0;
+    thing->x = (float)(Uint16)random() / (float)MAX_15 * WIDTH;
+    thing->y = (float)(Uint16)random() / (float)MAX_15 * HEIGHT;
+    thing->vx = (float)(Uint16)random() / (float)MAX_15;
+    thing->vy = (float)(Uint16)random() / (float)MAX_15;
+    thing->ax = 0.0f;
+    thing->ay = 0.0f;
+}
 
 void new_game() {
     struct GameState *gs;
@@ -69,14 +81,7 @@ void new_game() {
 
     for (i=1; i<NUMTHINGS; i++) {
         things[i].type = ASTEROID;
-        things[i].life = 10;
-        things[i].zen = 0;
-        things[i].x = (float)(Uint16)random() / (float)MAX_15 * WIDTH;
-        things[i].y = (float)(Uint16)random() / (float)MAX_15 * HEIGHT;
-        things[i].vx = (float)(Uint16)random() / (float)MAX_15;
-        things[i].vy = (float)(Uint16)random() / (float)MAX_15;
-        things[i].ax = 0.0f;
-        things[i].ay = 0.0f;
+        init_thing(&things[i]);
     }
 
     things[1].type = HOMER;
@@ -87,7 +92,7 @@ void new_game() {
 }
 void game_state_step(struct GameState *past, struct GameState *future) {
     struct Thing *pthings, *fthings;
-    int i, numliving, numthings;
+    int i, numliving, numthings, newcandies, newhomers;
     float px, py;
 
     /* Advance timer */
@@ -103,6 +108,8 @@ void game_state_step(struct GameState *past, struct GameState *future) {
     /* For each thing.. */
     numthings = past->numthings;
     numliving = 0;
+    newcandies = 0;
+    newhomers = 0;
     for (i=0; i<numthings; i++) {
         struct Thing thing = pthings[i];
         /* Advance thing's position */
@@ -119,7 +126,19 @@ void game_state_step(struct GameState *past, struct GameState *future) {
         if ((thing.type != PLAYER)
         &&  (fabs(thing.x - px) < 10.0f)
         &&  (fabs(thing.y - py) < 10.0f)) {
-            thing.life = 0;
+            switch (thing.type) {
+                case ASTEROID:
+                    thing.life = 0;
+                    newhomers++;
+                    break;
+                case HOMER:
+                    fthings[0].life = 0;
+                    break;
+                case CANDY:
+                    thing.life = 0;
+                    newcandies++;
+                    break;
+            }
         }
 
         /* What does a thing do? */
@@ -128,6 +147,9 @@ void game_state_step(struct GameState *past, struct GameState *future) {
             case PLAYER:
                 px = thing.x;
                 py = thing.y;
+                /* The player never gets removed from the Thing collection */
+                if (thing.life == 0)
+                    fthings[numliving++] = thing;
                 break;
             case ASTEROID:
                 if (thing.y == py) thing.ax = thing.x>px?-ASTEROIDF:ASTEROIDF;
@@ -175,10 +197,15 @@ void game_state_step(struct GameState *past, struct GameState *future) {
                 else {
                     float dx, dy, sum, sx, sy, fx, fy;
 
+                    dx = fabs(thing.x - px);
+                    if (dx > CANDYRANGE) break;
+                    dy = fabs(thing.y - py);
+                    if (dy > CANDYRANGE) break;
+                    if (hypot(dx, dy) > CANDYRANGE) break;
+
                     fx = thing.x>px?CANDYF:-CANDYF;
                     fy = thing.y>py?CANDYF:-CANDYF;
-                    dx = fabs(thing.x - px);
-                    dy = fabs(thing.y - py);
+
                     if (dx > (WIDTH /2)) { dx = WIDTH  - dx; fx *= -1; }
                     if (dy > (HEIGHT/2)) { dy = HEIGHT - dy; fy *= -1; }
                     sum = dx + dy;
@@ -196,6 +223,16 @@ void game_state_step(struct GameState *past, struct GameState *future) {
             fthings[numliving++] = thing;
     }
 
+    for (i=0; (i<newcandies)&&(numliving<NUMTHINGS); i++ + numliving++) {
+        fthings[numliving].type = CANDY;
+        init_thing(&fthings[numliving]);
+    }
+
+    for (i=0; (i<newhomers)&&(numliving<NUMTHINGS); i++ + numliving++) {
+        fthings[numliving].type = HOMER;
+        init_thing(&fthings[numliving]);
+    }
+
     /* Set future thing counter */
     future->numthings = numliving;
 }
@@ -206,7 +243,7 @@ void game_step() {
     if (++currentgamestate >= NUMGAMES)
         currentgamestate = 0;
     future = &gamestate[currentgamestate];
-    for (i=0; i<1024*4; i++)
+    for (i=0; i<1024*3; i++)
     game_state_step(past, future);
 }
 
@@ -267,9 +304,14 @@ int main(int argc, char **argv) {
         switch (event.type) {
             case SDL_QUIT:
                 goto leave;
-            case SDL_KEYDOWN:
-                if (event.key.keysym.sym == SDLK_ESCAPE)
+            case SDL_KEYDOWN: switch (event.key.keysym.sym) {
+                case SDLK_q:
+                case SDLK_ESCAPE:
                     goto leave;
+                case SDLK_n:
+                    new_game();
+                    break;
+                }
                 break;
         }
 
@@ -282,8 +324,10 @@ int main(int argc, char **argv) {
         injection_history[currentgamestate].x1 = x;
         injection_history[currentgamestate].y1 = y;
         /* Update player control state TODO move this someplace else */
-        gamestate[currentgamestate].things[0].vx = x;
-        gamestate[currentgamestate].things[0].vy = y;
+        if (gamestate[currentgamestate].things[0].life > 0) {
+            gamestate[currentgamestate].things[0].vx = x;
+            gamestate[currentgamestate].things[0].vy = y;
+        }
         game_step();
 
         /* Graphics! */
@@ -336,14 +380,20 @@ int main(int argc, char **argv) {
 
         /* Draw the player */
         glBegin(GL_QUADS);
-        glColor3ub(0, 255, 0);
-        /* Player's "head" leads their position */
-        x = x + gamestate[currentgamestate].things[0].x;
-        y = y + gamestate[currentgamestate].things[0].y;
-        glVertex2d(x +5, y +5);
-        glVertex2d(x -5, y +5);
-        glVertex2d(x -5, y -5);
-        glVertex2d(x +5, y -5);
+
+        /* If the player is alive... */
+        if (gamestate[currentgamestate].things[0].life > 0) {
+            /* A healthy green glow! */
+            glColor3ub(0, 255, 0);
+            /* Player's "head" leads their position */
+            x = x + gamestate[currentgamestate].things[0].x;
+            y = y + gamestate[currentgamestate].things[0].y;
+            glVertex2d(x +5, y +5);
+            glVertex2d(x -5, y +5);
+            glVertex2d(x -5, y -5);
+            glVertex2d(x +5, y -5);
+        }
+        else /* red for dead */ glColor3ub(255, 0, 0);
 
         /* Player's "body" shows their real position */
         x = gamestate[currentgamestate].things[0].x;
