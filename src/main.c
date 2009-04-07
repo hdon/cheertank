@@ -26,14 +26,15 @@ struct Thing {
     unsigned char angle; /* 256 angles is enough! */
     float x, y; /* position */
     float vx, vy; /* velocity */
+    float ax, ay; /* acceleration */
 };
 #define PLAYER 1
 #define ASTEROID 2
 #define CANDY 3
 #define HOMER 4
 
-#define HOMERF 0.3
-#define CANDYF 0.1
+#define HOMERF 2.30
+#define CANDYF 0.01
 
 /* Represents all objects of consequence at a current point in time */
 struct GameState {
@@ -73,6 +74,8 @@ void new_game() {
         things[i].y = (float)(Uint16)random() / (float)MAX_15 * HEIGHT;
         things[i].vx = (float)(Uint16)random() / (float)MAX_15;
         things[i].vy = (float)(Uint16)random() / (float)MAX_15;
+        things[i].ax = 0.0f;
+        things[i].ay = 0.0f;
     }
 
     things[1].type = HOMER;
@@ -110,23 +113,24 @@ void game_state_step(struct GameState *past, struct GameState *future) {
         /* What does a thing do? */
         switch (thing.type) {
             case HOMER:
+            case CANDY:
                 if (thing.y == py) ;//thing.vx = thing.x>px?HOMERF:-HOMERF;
                 else if (thing.x == px);// thing.vy = thing.y>py?HOMERF:-HOMERF;
                 else {
-                    thing.vy = fabs((thing.y-py)/(thing.x-px))
-                             * (thing.y<py?HOMERF:-HOMERF);
-                    thing.vx = fabs((thing.x-px)/(thing.y-py))
-                             * (thing.x<px?HOMERF:-HOMERF);
-                }
-                break;
-            case CANDY:
-                if (thing.y == py) ;//thing.vx = thing.x>px?CANDYF:-CANDYF;
-                else if (thing.x == px);// thing.vy = thing.y>py?CANDYF:-CANDYF;
-                else {
-                    thing.vy = fabs((thing.y-py)/(thing.x-px))
-                             * (thing.y>py?CANDYF:-CANDYF);
-                    thing.vx = fabs((thing.x-px)/(thing.y-py))
-                             * (thing.x>px?CANDYF:-CANDYF);
+                    float dx, dy, sum, sx, sy, fx, fy;
+
+                    fx = thing.x>px?-HOMERF:HOMERF;
+                    fy = thing.y>py?-HOMERF:HOMERF;
+                    dx = fabs(thing.x - px);
+                    dy = fabs(thing.y - py);
+                    if (dx > (WIDTH /2)) { dx = WIDTH  - dx; fx *= -1; }
+                    if (dy > (HEIGHT/2)) { dy = HEIGHT - dy; fy *= -1; }
+                    sum = dx + dy;
+                    sx = dx / sum;
+                    sy = dy / sum;
+
+                    thing.vx = sx * fx;
+                    thing.vy = sy * fy;
                 }
                 break;
         }
