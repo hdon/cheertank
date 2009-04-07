@@ -33,6 +33,7 @@ struct Thing {
 #define CANDY 3
 #define HOMER 4
 
+#define ASTEROIDF 0.013
 #define HOMERF 2.30
 #define CANDYF 2.30
 
@@ -104,6 +105,8 @@ void game_state_step(struct GameState *past, struct GameState *future) {
     for (i=0; i<numthings; i++) {
         struct Thing thing = pthings[i];
         /* Advance thing's position */
+        thing.vx += thing.ax;
+        thing.vy += thing.ay;
         thing.x += thing.vx;
         if (thing.x < 0) thing.x += WIDTH;
         else if (thing.x >= WIDTH) thing.x -= WIDTH;
@@ -112,6 +115,26 @@ void game_state_step(struct GameState *past, struct GameState *future) {
         else if (thing.y >= HEIGHT) thing.y -= HEIGHT;
         /* What does a thing do? */
         switch (thing.type) {
+            case ASTEROID:
+                if (thing.y == py) ;//thing.vx = thing.x>px?HOMERF:-HOMERF;
+                else if (thing.x == px);// thing.vy = thing.y>py?HOMERF:-HOMERF;
+                else {
+                    float dx, dy, sum, sx, sy, fx, fy;
+
+                    fx = thing.x>px?-ASTEROIDF:ASTEROIDF;
+                    fy = thing.y>py?-ASTEROIDF:ASTEROIDF;
+                    dx = fabs(thing.x - px);
+                    dy = fabs(thing.y - py);
+                    if (dx > (WIDTH /2)) { dx = WIDTH  - dx; fx *= -1; }
+                    if (dy > (HEIGHT/2)) { dy = HEIGHT - dy; fy *= -1; }
+                    sum = dx + dy;
+                    sx = dx / sum;
+                    sy = dy / sum;
+
+                    thing.ax = sx * fx;
+                    thing.ay = sy * fy;
+                }
+                break;
             case HOMER:
                 if (thing.y == py) ;//thing.vx = thing.x>px?HOMERF:-HOMERF;
                 else if (thing.x == px);// thing.vy = thing.y>py?HOMERF:-HOMERF;
@@ -185,7 +208,7 @@ void game_step() {
     if (++currentgamestate >= NUMGAMES)
         currentgamestate = 0;
     future = &gamestate[currentgamestate];
-    for (i=0; i<1024; i++)
+    for (i=0; i<1024*4; i++)
     game_state_step(past, future);
 }
 
