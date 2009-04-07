@@ -4,7 +4,7 @@
 #include <string.h>
 #include "oglconsole.h"
 
-#define FPS 60
+#define FPS 30
 #define MAX_15 32768 // 2^15
 #define NUMTHINGS 16
 #define NUMGAMES 16
@@ -116,8 +116,8 @@ void game_state_step(struct GameState *past, struct GameState *future) {
         /* What does a thing do? */
         switch (thing.type) {
             case ASTEROID:
-                if (thing.y == py) ;//thing.vx = thing.x>px?HOMERF:-HOMERF;
-                else if (thing.x == px);// thing.vy = thing.y>py?HOMERF:-HOMERF;
+                if (thing.y == py) thing.ax = thing.x>px?-ASTEROIDF:ASTEROIDF;
+                else if (thing.x == px) thing.ay = thing.y>py?-ASTEROIDF:ASTEROIDF;
                 else {
                     float dx, dy, sum, sx, sy, fx, fy;
 
@@ -136,8 +136,8 @@ void game_state_step(struct GameState *past, struct GameState *future) {
                 }
                 break;
             case HOMER:
-                if (thing.y == py) ;//thing.vx = thing.x>px?HOMERF:-HOMERF;
-                else if (thing.x == px);// thing.vy = thing.y>py?HOMERF:-HOMERF;
+                if (thing.y == py) thing.vx = thing.x>px?-HOMERF:HOMERF;
+                else if (thing.x == px) thing.vy = thing.y>py?-HOMERF:HOMERF;
                 else {
                     float dx, dy, sum, sx, sy, fx, fy;
 
@@ -156,8 +156,8 @@ void game_state_step(struct GameState *past, struct GameState *future) {
                 }
                 break;
             case CANDY:
-                if (thing.y == py) ;//thing.vx = thing.x>px?HOMERF:-HOMERF;
-                else if (thing.x == px);// thing.vy = thing.y>py?CANDYF:-CANDYF;
+                if (thing.y == py) thing.vx = thing.x>px?-CANDYF:CANDYF;
+                else if (thing.x == px) thing.vy = thing.y>py?-CANDYF:CANDYF;
                 else {
                     float dx, dy, sum, sx, sy, fx, fy;
 
