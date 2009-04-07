@@ -4,7 +4,7 @@
 #include <string.h>
 #include "oglconsole.h"
 
-#define FPS 30
+#define FPS 60
 #define MAX_15 32768 // 2^15
 #define NUMTHINGS 16
 #define NUMGAMES 16
