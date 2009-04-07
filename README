@@ -3,3 +3,26 @@ technology involves autonomous analysis of how the game may play out in the
 near future, or how it could have played out in the near past, to determine how
 the game can communicate with the player.
 
+Machine cheering could be used to synthesize more organic feedback from the game
+that is more believable and simulates a more social experience.
+
+My initial approach uses an extremely naive implementation: simply "fork"
+thousands of copies of the game at every point in time, and determine how likely
+a different outcome was!
+
+Super Mario has never been empowered to know when the moves he has made are
+particularly perilous and expertly executed. With "machine cheering" he can!
+
+Less naive approaches in the future. This is an experiment!
+
+Conventional games challenge the player to seek out rewards of predetermined
+value by facing challenges of predetermined difficulty.
+
+That difficulty, however, is very subjective. The same challenge can represent
+varying levels of difficulty for different players, or the same player at
+different points in time.
+
+In the extreme case, the player may even seek out and exploit overlooked corner-
+cases in a game's dynamics, attempting to avoid challenge altogether. A
+conventional game would have no way of knowing this.
+
