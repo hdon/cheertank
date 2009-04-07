@@ -87,7 +87,7 @@ void new_game() {
 }
 void game_state_step(struct GameState *past, struct GameState *future) {
     struct Thing *pthings, *fthings;
-    int i, j, numthings;
+    int i, numliving, numthings;
     float px, py;
 
     /* Advance timer */
@@ -102,6 +102,7 @@ void game_state_step(struct GameState *past, struct GameState *future) {
 
     /* For each thing.. */
     numthings = past->numthings;
+    numliving = 0;
     for (i=0; i<numthings; i++) {
         struct Thing thing = pthings[i];
         /* Advance thing's position */
@@ -113,8 +114,21 @@ void game_state_step(struct GameState *past, struct GameState *future) {
         thing.y += thing.vy;
         if (thing.y < 0) thing.y += HEIGHT;
         else if (thing.y >= HEIGHT) thing.y -= HEIGHT;
+
+        /* Collide with player? XXX assumes player is Thing #0 */
+        if ((thing.type != PLAYER)
+        &&  (fabs(thing.x - px) < 10.0f)
+        &&  (fabs(thing.y - py) < 10.0f)) {
+            thing.life = 0;
+        }
+
         /* What does a thing do? */
         switch (thing.type) {
+            /* XXX IMPORTANT the player is assumed to be Thing #0 XXX */
+            case PLAYER:
+                px = thing.x;
+                py = thing.y;
+                break;
             case ASTEROID:
                 if (thing.y == py) thing.ax = thing.x>px?-ASTEROIDF:ASTEROIDF;
                 else if (thing.x == px) thing.ay = thing.y>py?-ASTEROIDF:ASTEROIDF;
@@ -176,30 +190,14 @@ void game_state_step(struct GameState *past, struct GameState *future) {
                 }
                 break;
         }
-        fthings[i] = thing;
-    }
 
-    /* Collision checking -- assumes thing 1 is the player, and
-     * that only the player can collide with anything */
-    px = fthings[0].x;
-    py = fthings[0].y;
-    for (i=1; i<numthings; i++) {
-        if ((fabs(fthings[i].x - px) < 10.0f)
-        &&  (fabs(fthings[i].y - py) < 10.0f)) {
-            fthings[i].life = 0;
-        }
-    }
-
-    /* Prune zombies ;) */
-    j=0;
-    for (i=0; i<numthings; i++) {
-        if (fthings[i].life > 0) {
-            fthings[j++] = fthings[i];
-        }
+        /* Avoid zombies ;) */
+        if (thing.life > 0)
+            fthings[numliving++] = thing;
     }
 
     /* Set future thing counter */
-    future->numthings = j;
+    future->numthings = numliving;
 }
 void game_step() {
     struct GameState *past, *future;
