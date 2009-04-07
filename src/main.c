@@ -113,7 +113,6 @@ void game_state_step(struct GameState *past, struct GameState *future) {
         /* What does a thing do? */
         switch (thing.type) {
             case HOMER:
-            case CANDY:
                 if (thing.y == py) ;//thing.vx = thing.x>px?HOMERF:-HOMERF;
                 else if (thing.x == px);// thing.vy = thing.y>py?HOMERF:-HOMERF;
                 else {
@@ -121,6 +120,26 @@ void game_state_step(struct GameState *past, struct GameState *future) {
 
                     fx = thing.x>px?-HOMERF:HOMERF;
                     fy = thing.y>py?-HOMERF:HOMERF;
+                    dx = fabs(thing.x - px);
+                    dy = fabs(thing.y - py);
+                    if (dx > (WIDTH /2)) { dx = WIDTH  - dx; fx *= -1; }
+                    if (dy > (HEIGHT/2)) { dy = HEIGHT - dy; fy *= -1; }
+                    sum = dx + dy;
+                    sx = dx / sum;
+                    sy = dy / sum;
+
+                    thing.vx = sx * fx;
+                    thing.vy = sy * fy;
+                }
+                break;
+            case CANDY:
+                if (thing.y == py) ;//thing.vx = thing.x>px?HOMERF:-HOMERF;
+                else if (thing.x == px);// thing.vy = thing.y>py?HOMERF:-HOMERF;
+                else {
+                    float dx, dy, sum, sx, sy, fx, fy;
+
+                    fx = thing.x>px?HOMERF:-HOMERF;
+                    fy = thing.y>py?HOMERF:-HOMERF;
                     dx = fabs(thing.x - px);
                     dy = fabs(thing.y - py);
                     if (dx > (WIDTH /2)) { dx = WIDTH  - dx; fx *= -1; }
