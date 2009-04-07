@@ -34,7 +34,7 @@ struct Thing {
 #define HOMER 4
 
 #define HOMERF 2.30
-#define CANDYF 0.01
+#define CANDYF 2.30
 
 /* Represents all objects of consequence at a current point in time */
 struct GameState {
@@ -134,12 +134,12 @@ void game_state_step(struct GameState *past, struct GameState *future) {
                 break;
             case CANDY:
                 if (thing.y == py) ;//thing.vx = thing.x>px?HOMERF:-HOMERF;
-                else if (thing.x == px);// thing.vy = thing.y>py?HOMERF:-HOMERF;
+                else if (thing.x == px);// thing.vy = thing.y>py?CANDYF:-CANDYF;
                 else {
                     float dx, dy, sum, sx, sy, fx, fy;
 
-                    fx = thing.x>px?HOMERF:-HOMERF;
-                    fy = thing.y>py?HOMERF:-HOMERF;
+                    fx = thing.x>px?CANDYF:-CANDYF;
+                    fy = thing.y>py?CANDYF:-CANDYF;
                     dx = fabs(thing.x - px);
                     dy = fabs(thing.y - py);
                     if (dx > (WIDTH /2)) { dx = WIDTH  - dx; fx *= -1; }
